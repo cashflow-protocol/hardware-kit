@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import type {
   Address,
   HardwareWalletSigner,
@@ -51,7 +50,7 @@ export class KeystoneSigner implements HardwareWalletSigner {
     for (const tx of transactions) {
       config?.abortSignal?.throwIfAborted();
 
-      const requestId = randomUUID();
+      const requestId = generateUUID();
 
       // 1. Generate the sign request UR
       const { encoder } = generateSolSignRequest({
@@ -103,4 +102,22 @@ export class KeystoneSigner implements HardwareWalletSigner {
 
   // Keystone does NOT support off-chain message signing for Solana
   // signMessages is intentionally not implemented
+}
+
+/** React Native-compatible UUID v4 generator (no Node.js crypto dependency) */
+function generateUUID(): string {
+  const hex = '0123456789abcdef';
+  let uuid = '';
+  for (let i = 0; i < 36; i++) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) {
+      uuid += '-';
+    } else if (i === 14) {
+      uuid += '4'; // version 4
+    } else if (i === 19) {
+      uuid += hex[(Math.random() * 4) | 8]; // variant bits
+    } else {
+      uuid += hex[(Math.random() * 16) | 0];
+    }
+  }
+  return uuid;
 }
