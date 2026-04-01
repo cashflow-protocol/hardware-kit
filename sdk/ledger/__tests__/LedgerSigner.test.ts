@@ -39,6 +39,8 @@ function createMockMessage(): SignableMessage {
 
 const TEST_ADDRESS = '11111111111111111111111111111111' as Address;
 const TEST_PATH = "m/44'/501'/0'/0'";
+/** Path as Ledger SDK expects it (without m/ prefix) */
+const LEDGER_PATH = "44'/501'/0'/0'";
 
 describe('LedgerSigner', () => {
   it('signs a single transaction', async () => {
@@ -52,7 +54,7 @@ describe('LedgerSigner', () => {
     expect(results[0][TEST_ADDRESS]).toBeDefined();
     expect(results[0][TEST_ADDRESS]).toBeInstanceOf(Uint8Array);
     expect(mockApp.signTransaction).toHaveBeenCalledWith(
-      TEST_PATH,
+      LEDGER_PATH,
       expect.any(Buffer),
     );
   });
@@ -78,7 +80,7 @@ describe('LedgerSigner', () => {
     expect(results).toHaveLength(1);
     expect(results![0][TEST_ADDRESS]).toBeDefined();
     expect(mockApp.signOffchainMessage).toHaveBeenCalledWith(
-      TEST_PATH,
+      LEDGER_PATH,
       expect.any(Buffer),
     );
   });
@@ -144,6 +146,6 @@ describe('LedgerSigner', () => {
 
     const result = await signer.verifyAddressOnDevice!();
     expect(result).toBe(true);
-    expect(mockApp.getAddress).toHaveBeenCalledWith(TEST_PATH, true);
+    expect(mockApp.getAddress).toHaveBeenCalledWith(LEDGER_PATH, true);
   });
 });

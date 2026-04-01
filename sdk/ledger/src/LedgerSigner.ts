@@ -24,6 +24,10 @@ export class LedgerSigner implements HardwareWalletSigner {
   readonly address: Address;
   readonly derivationPath: string;
   private solanaApp: Solana;
+  /** Ledger SDK expects path without "m/" prefix */
+  private get ledgerPath(): string {
+    return this.derivationPath.replace(/^m\//, '');
+  }
 
   constructor(solanaApp: Solana, address: Address, derivationPath: string) {
     this.solanaApp = solanaApp;
@@ -43,7 +47,7 @@ export class LedgerSigner implements HardwareWalletSigner {
       try {
         const txBuffer = Buffer.from(tx.messageBytes);
         const { signature } = await this.solanaApp.signTransaction(
-          this.derivationPath,
+          this.ledgerPath,
           txBuffer,
         );
 
@@ -72,7 +76,7 @@ export class LedgerSigner implements HardwareWalletSigner {
       try {
         const msgBuffer = Buffer.from(msg.content);
         const { signature } = await this.solanaApp.signOffchainMessage(
-          this.derivationPath,
+          this.ledgerPath,
           msgBuffer,
         );
 
@@ -91,7 +95,7 @@ export class LedgerSigner implements HardwareWalletSigner {
 
   async verifyAddressOnDevice(): Promise<boolean> {
     try {
-      await this.solanaApp.getAddress(this.derivationPath, true);
+      await this.solanaApp.getAddress(this.ledgerPath, true);
       return true;
     } catch {
       return false;

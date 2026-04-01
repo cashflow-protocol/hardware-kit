@@ -50,7 +50,9 @@ export class LedgerConnectedWallet implements ConnectedWallet {
     for (let i = 0; i < limit; i++) {
       const derivationPath = solanaBip44Path(i, 0);
       try {
-        const result = await this.solanaApp.getAddress(derivationPath);
+        // Ledger SDK expects path without "m/" prefix
+        const ledgerPath = derivationPath.replace(/^m\//, '');
+        const result = await this.solanaApp.getAddress(ledgerPath);
         const addressBytes = result.address;
         // Ledger returns raw 32-byte public key, encode as base58
         const bs58Address = address(
