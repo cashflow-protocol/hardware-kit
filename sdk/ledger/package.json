@@ -1,0 +1,43 @@
+{
+  "name": "@heymike/hw-ledger",
+  "version": "0.1.0",
+  "description": "Ledger hardware wallet adapter for Solana (BLE + USB)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@heymike/hw-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@ledgerhq/hw-app-solana": ">=7",
+    "@ledgerhq/hw-transport": ">=6",
+    "@ledgerhq/react-native-hw-transport-ble": ">=6",
+    "react-native-ble-plx": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "@ledgerhq/react-native-hid": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ledgerhq/hw-app-solana": "^7.2.0",
+    "@ledgerhq/hw-transport": "^6.31.0",
+    "@solana/addresses": "^2.1.0",
+    "@solana/keys": "^2.1.0",
+    "@solana/signers": "^2.1.0",
+    "@solana/transactions": "^2.1.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^25.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.7.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}

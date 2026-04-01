@@ -1,0 +1,37 @@
+{
+  "name": "@heymike/hw-react-native-ui",
+  "version": "0.1.0",
+  "description": "React Native UI components and hooks for Solana hardware wallets",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo 'No tests yet'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@heymike/hw-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.72",
+    "react-native-vision-camera": ">=4",
+    "react-native-ble-plx": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react-native-vision-camera": {
+      "optional": true
+    },
+    "react-native-ble-plx": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "react": "^18.3.0",
+    "react-native": "^0.76.0",
+    "typescript": "^5.7.0"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@heymike/hw-core",
+  "version": "0.1.0",
+  "description": "Core interfaces and types for Solana hardware wallet SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@solana/addresses": "^2.1.0",
+    "@solana/keys": "^2.1.0",
+    "@solana/signers": "^2.1.0",
+    "@solana/transactions": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^25.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.7.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}
