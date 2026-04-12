@@ -28,17 +28,21 @@ export class KeystoneSigner implements HardwareWalletSigner {
   readonly derivationPath: string;
   private xfp: string;
   private qrHandler: QrInteractionHandler;
+  /** Signer public key in hex (32-byte Ed25519 pubkey), used by Keystone sign request */
+  private publicKeyHex?: string;
 
   constructor(
     address: Address,
     derivationPath: string,
     xfp: string,
     qrHandler: QrInteractionHandler,
+    publicKeyHex?: string,
   ) {
     this.address = address;
     this.derivationPath = derivationPath;
     this.xfp = xfp;
     this.qrHandler = qrHandler;
+    this.publicKeyHex = publicKeyHex;
   }
 
   async signTransactions(
@@ -58,7 +62,7 @@ export class KeystoneSigner implements HardwareWalletSigner {
         signData: Buffer.from(tx.messageBytes),
         path: this.derivationPath,
         xfp: this.xfp,
-        address: this.address,
+        addressPubKeyHex: this.publicKeyHex,
       });
 
       // 2. Display animated QR for user to scan with Keystone

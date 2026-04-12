@@ -53,12 +53,17 @@ export interface SolSignRequestParams {
   signData: Buffer;
   path: string;
   xfp: string;
-  address?: string;
+  /** Optional signer public key as 32-byte hex string (NOT base58 address) */
+  addressPubKeyHex?: string;
 }
 
 /**
  * Generate a Solana sign-request UR for display as QR.
  * Returns the UR-encoded parts that should be displayed as an animated QR.
+ *
+ * Note: Keystone's SDK internally converts the `address` field via `Buffer.from(v, 'hex')`,
+ * so we must pass raw public-key bytes as a hex string — NOT a base58 address.
+ * The field is optional, so we omit it unless a hex pubkey is provided.
  */
 export function generateSolSignRequest(params: SolSignRequestParams): {
   ur: UR;
@@ -72,10 +77,11 @@ export function generateSolSignRequest(params: SolSignRequestParams): {
       dataType: KeystoneSolanaSDK.DataType.Transaction,
       path: params.path,
       xfp: params.xfp,
-      address: params.address,
+      address: params.addressPubKeyHex,
     });
 
-    const encoder = new UREncoder(ur, 200); // 200 byte fragments for QR
+    // 400-byte fragments — standard Keystone fragment size, per their SDK docs
+    const encoder = new UREncoder(ur, 400);
     return { ur, encoder };
   } catch (error) {
     throw new HardwareWalletError(

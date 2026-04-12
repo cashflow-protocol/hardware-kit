@@ -1,5 +1,7 @@
 import React, {useState, useCallback, useRef} from 'react';
 import {View, Modal, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import URDecoder from '@ngraveio/bc-ur/dist/urDecoder';
+import UREncoder from '@ngraveio/bc-ur/dist/urEncoder';
 import type {QrInteractionHandler} from '@heymike/hw-core';
 import {QrCodeDisplay} from './QrCodeDisplay';
 import {QrCodeScanner, type QrScanResult} from './QrCodeScanner';
@@ -41,9 +43,13 @@ export function useQrInteractionHandler(
   QrModal: React.FC;
 } {
   const [state, setState] = useState<QrState>({mode: 'idle'});
+  const [scanProgress, setScanProgress] = useState<number>(0);
   const scanResolveRef = useRef<((data: string) => void) | null>(null);
   const scanRejectRef = useRef<((error: Error) => void) | null>(null);
   const displayResolveRef = useRef<(() => void) | null>(null);
+  // Accumulates multi-part UR fragments during a scan.
+  // For single-part URs, the first receivePart completes the decoder.
+  const urDecoderRef = useRef<URDecoder | null>(null);
 
   const handler: QrInteractionHandler = {
     displayQr: async (urPayload: string, type: string) => {
@@ -55,6 +61,8 @@ export function useQrInteractionHandler(
 
     scanQr: async () => {
       return new Promise<string>((resolve, reject) => {
+        urDecoderRef.current = new URDecoder();
+        setScanProgress(0);
         scanResolveRef.current = resolve;
         scanRejectRef.current = reject;
         setState({mode: 'scan'});
@@ -72,12 +80,42 @@ export function useQrInteractionHandler(
   };
 
   const handleScanResult = useCallback((result: QrScanResult) => {
-    if (scanResolveRef.current) {
-      scanResolveRef.current(result.data);
+    const decoder = urDecoderRef.current;
+    if (!decoder || !scanResolveRef.current) return;
+
+    // Feed each scanned QR frame into the UR decoder.
+    // - Single-part URs: completes on first frame.
+    // - Multi-part (animated) URs: keeps receiving until fountain decoder is satisfied.
+    try {
+      decoder.receivePart(result.data);
+    } catch {
+      // Invalid or duplicate frame — ignore and keep scanning
+      return;
+    }
+
+    if (decoder.isError()) {
+      const err = new Error(`UR decode error: ${decoder.resultError()}`);
+      scanRejectRef.current?.(err);
       scanResolveRef.current = null;
       scanRejectRef.current = null;
+      urDecoderRef.current = null;
+      setState({mode: 'idle'});
+      return;
     }
-    setState({mode: 'idle'});
+
+    // Update progress for the UI
+    setScanProgress(Math.round(decoder.getProgress() * 100));
+
+    if (decoder.isComplete() && decoder.isSuccess()) {
+      const ur = decoder.resultUR();
+      // Serialize as a single-part UR string so downstream `URDecoder.decode(s)` works
+      const singlePart = UREncoder.encodeSinglePart(ur);
+      scanResolveRef.current(singlePart);
+      scanResolveRef.current = null;
+      scanRejectRef.current = null;
+      urDecoderRef.current = null;
+      setState({mode: 'idle'});
+    }
   }, []);
 
   const handleCancel = useCallback(() => {
@@ -90,6 +128,8 @@ export function useQrInteractionHandler(
       displayResolveRef.current();
       displayResolveRef.current = null;
     }
+    urDecoderRef.current = null;
+    setScanProgress(0);
     setState({mode: 'idle'});
   }, []);
 
@@ -139,6 +179,9 @@ export function useQrInteractionHandler(
                 <Text style={styles.title}>Scan Keystone Response</Text>
                 <Text style={styles.subtitle}>
                   Scan the QR code displayed on your Keystone device
+                  {scanProgress > 0 && scanProgress < 100
+                    ? ` — ${scanProgress}%`
+                    : ''}
                 </Text>
                 <QrCodeScanner
                   onScan={handleScanResult}
@@ -156,7 +199,7 @@ export function useQrInteractionHandler(
         </View>
       </Modal>
     ),
-    [state, handleCancel, handleDisplayContinue, handleScanResult, options],
+    [state, scanProgress, handleCancel, handleDisplayContinue, handleScanResult, options],
   );
 
   return {handler, QrModal};

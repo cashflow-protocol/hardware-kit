@@ -57,7 +57,7 @@ export class KeystoneConnectedWallet implements ConnectedWallet {
   }
 
   getSigner(account: HardwareAccount): HardwareWalletSigner {
-    // Find the key matching this account to get the xfp
+    // Find the matching key to get the hex public key for the sign request
     const matchingKey = this.multiAccounts.keys.find(
       (key) => key.path === account.derivationPath,
     );
@@ -67,6 +67,7 @@ export class KeystoneConnectedWallet implements ConnectedWallet {
       account.derivationPath,
       this.multiAccounts.masterFingerprint,
       this.qrHandler,
+      matchingKey?.publicKey,
     );
   }
 

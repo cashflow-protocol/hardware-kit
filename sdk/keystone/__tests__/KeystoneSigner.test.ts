@@ -1,11 +1,14 @@
 import { KeystoneSigner } from '../src/KeystoneSigner';
+import { generateSolSignRequest, parseSolSignature } from '../src/qr-protocol';
 import { HardwareWalletError, HardwareWalletErrorCode } from '@heymike/hw-core';
 import type { Address, QrInteractionHandler } from '@heymike/hw-core';
 import type { Transaction } from '@solana/transactions';
 
 const TEST_ADDRESS = '11111111111111111111111111111111' as Address;
 const TEST_PATH = "m/44'/501'/0'";
-const TEST_XFP = 'ABCD1234';
+const TEST_XFP = 'abcd1234';
+const TEST_PUBKEY_HEX =
+  '0000000000000000000000000000000000000000000000000000000000000001';
 
 // Mock QR interaction handler
 function createMockQrHandler(overrides: Partial<QrInteractionHandler> = {}): QrInteractionHandler {
@@ -60,6 +63,31 @@ describe('KeystoneSigner', () => {
     expect(displayQr).toHaveBeenCalled();
     expect(scanQr).toHaveBeenCalled();
     expect(dismiss).toHaveBeenCalled();
+  });
+
+  it('generates a valid UR sign request with hex pubkey address', () => {
+    const { ur, encoder } = generateSolSignRequest({
+      requestId: '12345678-1234-4234-8234-123456789012',
+      signData: Buffer.from([1, 2, 3, 4, 5]),
+      path: "m/44'/501'/0'",
+      xfp: TEST_XFP,
+      addressPubKeyHex: TEST_PUBKEY_HEX,
+    });
+    expect(ur.type).toBe('sol-sign-request');
+    expect(encoder.fragments.length).toBeGreaterThan(0);
+  });
+
+  it('generates a valid UR sign request without address (optional)', () => {
+    // Regression: previously we passed a base58 address which Keystone's SDK
+    // interpreted as hex, producing garbage. The addressPubKeyHex field must
+    // be omittable.
+    const { ur } = generateSolSignRequest({
+      requestId: '12345678-1234-4234-8234-123456789012',
+      signData: Buffer.from([1, 2, 3]),
+      path: "m/44'/501'/0'",
+      xfp: TEST_XFP,
+    });
+    expect(ur.type).toBe('sol-sign-request');
   });
 
   it('respects abort signal', async () => {
