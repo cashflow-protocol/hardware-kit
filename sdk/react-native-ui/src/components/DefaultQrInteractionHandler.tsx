@@ -142,7 +142,6 @@ export function useQrInteractionHandler(
                 </Text>
                 <QrCodeScanner
                   onScan={handleScanResult}
-                  onCancel={handleCancel}
                   renderScanner={options?.renderScanner}
                 />
               </>
