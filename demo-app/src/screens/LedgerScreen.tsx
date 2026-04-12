@@ -15,6 +15,17 @@ import {useHardwareWallet} from '@heymike/hw-react-native-ui';
 import {BleDevicePicker, SigningModal} from '@heymike/hw-react-native-ui/dist/components';
 import type {HardwareAccount} from '@heymike/hw-core';
 import type {SigningState} from '@heymike/hw-react-native-ui/dist/components';
+import {
+  appendTransactionMessageInstruction,
+  createSolanaRpc,
+  createTransactionMessage,
+  getSignatureFromTransaction,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signTransactionMessageWithSigners,
+} from '@solana/kit';
+import {getTransferSolInstruction} from '@solana-program/system';
 
 import TransportBLE from '@ledgerhq/react-native-hw-transport-ble';
 
@@ -54,6 +65,7 @@ export function LedgerScreen() {
     accounts,
     isLoadingAccounts,
     loadAccounts,
+    loadMoreAccounts,
     getSigner,
     error,
     clearError,
@@ -62,6 +74,7 @@ export function LedgerScreen() {
   const [selectedAccount, setSelectedAccount] =
     useState<HardwareAccount | null>(null);
   const [signingState, setSigningState] = useState<SigningState | null>(null);
+  const [signingError, setSigningError] = useState<string | undefined>(undefined);
   const [blePermGranted, setBlePermGranted] = useState(false);
 
   useEffect(() => {
@@ -112,15 +125,38 @@ export function LedgerScreen() {
     const signer = getSigner(selectedAccount);
     if (!signer) return;
 
-    setSigningState('waiting-for-device');
+    setSigningError(undefined);
+    setSigningState('preparing');
 
-    // In a real app you'd do:
-    // const signedTx = await signTransactionMessageWithSigners(txMessage);
-    // For demo, simulate the flow:
-    setTimeout(() => setSigningState('signing'), 1500);
-    setTimeout(() => {
+    try {
+      const rpc = createSolanaRpc('https://api.devnet.solana.com');
+      const {value: latestBlockhash} = await rpc.getLatestBlockhash().send();
+
+      const txMessage = pipe(
+        createTransactionMessage({version: 0}),
+        (m) => setTransactionMessageFeePayerSigner(signer, m),
+        (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        (m) =>
+          appendTransactionMessageInstruction(
+            getTransferSolInstruction({
+              source: signer,
+              destination: signer.address,
+              amount: 0n,
+            }),
+            m,
+          ),
+      );
+
+      setSigningState('waiting-for-device');
+      const signedTx = await signTransactionMessageWithSigners(txMessage);
+      const sig = getSignatureFromTransaction(signedTx);
+
       setSigningState('success');
-    }, 3000);
+      Alert.alert('Transaction signed', `Signature:\n${sig}`);
+    } catch (e: any) {
+      setSigningError(e?.message ?? String(e));
+      setSigningState('error');
+    }
   };
 
   return (
@@ -155,13 +191,16 @@ export function LedgerScreen() {
       {connectedWallet && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Select Account</Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => loadAccounts(5)}>
-            <Text style={styles.buttonText}>
-              {isLoadingAccounts ? 'Loading...' : 'Load Accounts'}
-            </Text>
-          </TouchableOpacity>
+          {accounts.length === 0 && (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => loadAccounts(10)}
+              disabled={isLoadingAccounts}>
+              <Text style={styles.buttonText}>
+                {isLoadingAccounts ? 'Loading...' : 'Load Accounts'}
+              </Text>
+            </TouchableOpacity>
+          )}
           {isLoadingAccounts && <ActivityIndicator style={styles.loader} />}
 
           <FlatList
@@ -182,6 +221,17 @@ export function LedgerScreen() {
               </TouchableOpacity>
             )}
           />
+
+          {accounts.length > 0 && (
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton]}
+              onPress={() => loadMoreAccounts(10)}
+              disabled={isLoadingAccounts}>
+              <Text style={styles.buttonText}>
+                {isLoadingAccounts ? 'Loading...' : 'Load More Accounts'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -201,7 +251,11 @@ export function LedgerScreen() {
           visible={signingState !== null}
           state={signingState}
           walletType="ledger"
-          onDismiss={() => setSigningState(null)}
+          errorMessage={signingError}
+          onDismiss={() => {
+            setSigningState(null);
+            setSigningError(undefined);
+          }}
           onRetry={handleSign}
         />
       )}
@@ -236,6 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dangerButton: {backgroundColor: '#ef4444'},
+  secondaryButton: {backgroundColor: '#374151', marginTop: 8},
   buttonText: {color: '#fff', fontWeight: '600'},
   loader: {marginVertical: 8},
   accountItem: {

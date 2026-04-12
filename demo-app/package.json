@@ -18,6 +18,8 @@
     "@ledgerhq/hw-app-solana": "^7.2.0",
     "@ledgerhq/react-native-hw-transport-ble": "^6.39.1",
     "@react-native/new-app-screen": "0.84.1",
+    "@solana-program/system": "^0.7.0",
+    "@solana/kit": "^2.3.0",
     "assert": "^2.1.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
