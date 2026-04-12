@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,20 @@ import {SigningModal} from '@heymike/hw-react-native-ui/dist/components';
 import type {HardwareAccount} from '@heymike/hw-core';
 import type {SigningState} from '@heymike/hw-react-native-ui/dist/components';
 
-// In a real app, use @trezor/connect-mobile:
-// import TrezorConnect from '@trezor/connect-mobile';
+// To use a real Trezor device:
+//   1. Install the real SDK: `pnpm add @trezor/connect-mobile`
+//   2. Replace the mock below with: import TrezorConnect from '@trezor/connect-mobile';
+//   3. Keep the Linking listener in useEffect — it's how Trezor Suite responses reach the app.
 const mockTrezorConnect: TrezorConnectInterface = {
   init: async () => {},
+  handleDeeplink: () => {},
   solanaGetAddress: async ({path}) => ({
     success: true,
-    payload: {address: '11111111111111111111111111111111'},
+    payload: {
+      address: '11111111111111111111111111111111',
+      path: [],
+      serializedPath: typeof path === 'string' ? path : '',
+    },
   }),
   solanaSignTransaction: async () => ({
     success: true,
@@ -33,8 +40,9 @@ const adapter = new TrezorAdapter({
   openUrl: (url: string) => Linking.openURL(url),
   callbackUrl: 'hwwalletdemo://trezor-callback',
   manifest: {
+    email: 'support@example.com',
     appName: 'HW Wallet Demo',
-    appIcon: 'https://example.com/icon.png',
+    appUrl: 'https://example.com',
   },
   trezorConnect: mockTrezorConnect,
 });
@@ -56,6 +64,15 @@ export function TrezorScreen() {
   const [selectedAccount, setSelectedAccount] =
     useState<HardwareAccount | null>(null);
   const [signingState, setSigningState] = useState<SigningState | null>(null);
+
+  // CRITICAL for real Trezor: forward callback URLs into TrezorConnect.
+  // Without this, sign/getAddress promises from Trezor Suite will hang forever.
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({url}) => {
+      mockTrezorConnect.handleDeeplink(url);
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleConnect = async () => {
     try {
