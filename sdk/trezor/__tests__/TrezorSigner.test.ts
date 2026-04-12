@@ -11,9 +11,10 @@ const MOCK_SIGNATURE = 'ab'.repeat(64); // 64 bytes hex
 function createMockTrezorConnect(overrides: Partial<TrezorConnectInterface> = {}): TrezorConnectInterface {
   return {
     init: jest.fn().mockResolvedValue(undefined),
+    handleDeeplink: jest.fn(),
     solanaGetAddress: overrides.solanaGetAddress ?? jest.fn().mockResolvedValue({
       success: true,
-      payload: { address: TEST_ADDRESS },
+      payload: { address: TEST_ADDRESS, path: [], serializedPath: TEST_PATH },
     }),
     solanaSignTransaction: overrides.solanaSignTransaction ?? jest.fn().mockResolvedValue({
       success: true,

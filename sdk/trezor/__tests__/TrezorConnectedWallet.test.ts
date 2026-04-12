@@ -5,10 +5,32 @@ import type { TrezorConnectInterface } from '../src/TrezorAdapter';
 function createMockConnect(overrides: Partial<TrezorConnectInterface> = {}): TrezorConnectInterface {
   return {
     init: jest.fn().mockResolvedValue(undefined),
+    handleDeeplink: jest.fn(),
     solanaGetAddress: overrides.solanaGetAddress ?? jest.fn()
-      .mockResolvedValueOnce({ success: true, payload: { address: '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM' } })
-      .mockResolvedValueOnce({ success: true, payload: { address: 'E9VrvAdGRvCguN2XgGMaheR7C2FeTE8cHQhFBLkTbTBx' } })
-      .mockResolvedValueOnce({ success: true, payload: { address: 'CiDwVBFgWV9E5MvXWoLgnEgn2hK7rJikbvfWavzAQz3' } }),
+      .mockResolvedValueOnce({
+        success: true,
+        payload: {
+          address: '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM',
+          path: [],
+          serializedPath: "m/44'/501'/0'/0'",
+        },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        payload: {
+          address: 'E9VrvAdGRvCguN2XgGMaheR7C2FeTE8cHQhFBLkTbTBx',
+          path: [],
+          serializedPath: "m/44'/501'/1'/0'",
+        },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        payload: {
+          address: 'CiDwVBFgWV9E5MvXWoLgnEgn2hK7rJikbvfWavzAQz3',
+          path: [],
+          serializedPath: "m/44'/501'/2'/0'",
+        },
+      }),
     solanaSignTransaction: overrides.solanaSignTransaction ?? jest.fn().mockResolvedValue({
       success: true,
       payload: { signature: 'ab'.repeat(64) },

@@ -10,8 +10,13 @@ import {
   HardwareWalletErrorCode,
   solanaBip44Path,
 } from '@heymike/hw-core';
-import type { TrezorConnectInterface } from './TrezorAdapter';
+import type {
+  TrezorConnectInterface,
+  TrezorAddressResult,
+  TrezorErrorPayload,
+} from './TrezorAdapter';
 import { TrezorSigner } from './TrezorSigner';
+import { mapTrezorError } from './errors';
 
 export class TrezorConnectedWallet implements ConnectedWallet {
   readonly walletType = WalletType.Trezor;
@@ -45,15 +50,10 @@ export class TrezorConnectedWallet implements ConnectedWallet {
         });
 
         if (!result.success) {
-          const errorPayload = result.payload as { error: string; code?: string };
-          throw new HardwareWalletError(
-            `Trezor getAddress failed: ${errorPayload.error}`,
-            HardwareWalletErrorCode.ConnectionFailed,
-            WalletType.Trezor,
-          );
+          throw mapTrezorError(result.payload as TrezorErrorPayload);
         }
 
-        const { address: addr } = result.payload as { address: string };
+        const { address: addr } = result.payload as TrezorAddressResult;
         accounts.push({
           address: address(addr),
           derivationPath,

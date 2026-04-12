@@ -12,51 +12,107 @@ import { TrezorConnectedWallet } from './TrezorConnectedWallet';
 
 export interface TrezorAdapterConfig {
   /**
-   * Function to open a deep link URL (e.g., React Native's Linking.openURL).
+   * Function to open a deep link URL (e.g. `Linking.openURL` from React Native).
+   * Trezor Connect invokes this when it needs to launch the Trezor Suite app
+   * with a sign / getAddress / etc. request.
    */
-  openUrl: (url: string) => Promise<void>;
+  openUrl: (url: string) => void | Promise<void>;
   /**
-   * The URL scheme that Trezor Suite will call back to after signing.
-   * e.g., 'myapp://trezor-callback'
+   * URL scheme that Trezor Suite will call back to after completing an action.
+   * Must be a URL your app has registered as a deep link target.
+   * e.g. `'myapp://trezor-callback'`
    */
   callbackUrl: string;
   /**
-   * Manifest for Trezor Connect - identifies your app.
+   * Manifest for Trezor Connect — identifies your app to Trezor Suite.
+   * All three fields are required.
    */
   manifest: {
+    email: string;
     appName: string;
-    appIcon: string;
+    appUrl: string;
   };
   /**
-   * Optional: TrezorConnect instance if consumer wants to provide their own.
-   * Falls back to @trezor/connect-mobile if available.
+   * The real TrezorConnect instance from `@trezor/connect-mobile`.
+   *
+   * ```ts
+   * import TrezorConnect from '@trezor/connect-mobile';
+   * const adapter = new TrezorAdapter({ trezorConnect: TrezorConnect, ... });
+   * ```
    */
-  trezorConnect?: TrezorConnectInterface;
+  trezorConnect: TrezorConnectInterface;
 }
 
 /**
- * Minimal interface for TrezorConnect to avoid hard dependency on @trezor/connect-mobile.
- * Consumers inject the real implementation.
+ * Minimal structural interface matching `@trezor/connect-mobile`'s exported
+ * TrezorConnect object. Keeps this package free of a hard dependency on the
+ * Trezor SDK — consumers inject their own.
+ *
+ * IMPORTANT: Your app must also register a `Linking` listener that forwards
+ * incoming callback URLs to `trezorConnect.handleDeeplink(url)`. Without this,
+ * sign / getAddress promises will hang forever.
+ *
+ * ```ts
+ * useEffect(() => {
+ *   const sub = Linking.addEventListener('url', ({url}) =>
+ *     TrezorConnect.handleDeeplink(url)
+ *   );
+ *   return () => sub.remove();
+ * }, []);
+ * ```
  */
 export interface TrezorConnectInterface {
-  init(settings: {
-    manifest: { email: string; appUrl: string };
-    deeplinkOpen: (url: string) => void;
-    deeplinkCallbackUrl: string;
-  }): Promise<void>;
-  solanaGetAddress(params: {
-    path: string;
-    showOnTrezor?: boolean;
-  }): Promise<TrezorResponse<{ address: string }>>;
-  solanaSignTransaction(params: {
-    path: string;
-    serializedTx: string;
-  }): Promise<TrezorResponse<{ signature: string }>>;
+  init(settings: TrezorInitSettings): Promise<void>;
+  /** Forward a callback deep-link URL received by your app into Trezor Connect. */
+  handleDeeplink(url: string): void;
+  solanaGetAddress(
+    params: TrezorGetAddressParams,
+  ): Promise<TrezorResponse<TrezorAddressResult>>;
+  solanaSignTransaction(
+    params: TrezorSignTransactionParams,
+  ): Promise<TrezorResponse<TrezorSignedTransactionResult>>;
 }
 
-interface TrezorResponse<T> {
+export interface TrezorInitSettings {
+  manifest: { email: string; appName: string; appUrl: string };
+  deeplinkOpen: (url: string) => void | Promise<void>;
+  deeplinkCallbackUrl: string;
+}
+
+export interface TrezorGetAddressParams {
+  path: string | number[];
+  showOnTrezor?: boolean;
+  address?: string;
+}
+
+export interface TrezorAddressResult {
+  address: string;
+  path: number[];
+  serializedPath: string;
+}
+
+export interface TrezorSignTransactionParams {
+  path: string | number[];
+  /** Hex-encoded serialized Solana message bytes (or full Transaction when `serialize: true`). */
+  serializedTx: string;
+  /** If true, `serializedTx` must be a full serialized Transaction. Default false → message bytes only. */
+  serialize?: boolean;
+}
+
+export interface TrezorSignedTransactionResult {
+  signature: string;
+  serializedTx?: string;
+}
+
+export interface TrezorResponse<T> {
   success: boolean;
-  payload: T | { error: string; code?: string };
+  payload: T | TrezorErrorPayload;
+}
+
+export interface TrezorErrorPayload {
+  error: string;
+  /** See `@trezor/connect` ERROR_CODES or `@trezor/protobuf` FailureType. */
+  code?: string;
 }
 
 export class TrezorAdapter implements HardwareWalletAdapter {
@@ -94,10 +150,7 @@ export class TrezorAdapter implements HardwareWalletAdapter {
     if (!this.initialized) {
       try {
         await trezorConnect.init({
-          manifest: {
-            email: 'support@example.com',
-            appUrl: this.config.callbackUrl,
-          },
+          manifest: this.config.manifest,
           deeplinkOpen: (url: string) => this.config.openUrl(url),
           deeplinkCallbackUrl: this.config.callbackUrl,
         });

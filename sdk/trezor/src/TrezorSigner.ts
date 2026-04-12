@@ -11,7 +11,12 @@ import {
 } from '@heymike/hw-core';
 import type { SignatureBytes } from '@solana/keys';
 import type { TransactionPartialSignerConfig } from '@solana/signers';
-import type { TrezorConnectInterface } from './TrezorAdapter';
+import type {
+  TrezorConnectInterface,
+  TrezorErrorPayload,
+  TrezorSignedTransactionResult,
+} from './TrezorAdapter';
+import { mapTrezorError } from './errors';
 
 /**
  * Trezor signer that uses deep linking to Trezor Suite for transaction signing.
@@ -44,7 +49,10 @@ export class TrezorSigner implements HardwareWalletSigner {
       config?.abortSignal?.throwIfAborted();
 
       try {
-        // Trezor expects hex-encoded serialized transaction
+        // Trezor's solanaSignTransaction expects a hex-encoded serialized
+        // Solana message. Default is `serialize: false` which means
+        // `serializedTx` is just message bytes (not a full Transaction).
+        // See @trezor/connect solanaSignTransaction.js::payloadToPrecomposed.
         const serializedTx = Buffer.from(tx.messageBytes).toString('hex');
 
         const result = await this.trezorConnect.solanaSignTransaction({
@@ -53,28 +61,21 @@ export class TrezorSigner implements HardwareWalletSigner {
         });
 
         if (!result.success) {
-          const errorPayload = result.payload as { error: string; code?: string };
-          const code = errorPayload.code;
+          throw mapTrezorError(result.payload as TrezorErrorPayload);
+        }
 
-          if (code === 'Failure_ActionCancelled' || code === 'Method_Cancel') {
-            throw new HardwareWalletError(
-              'Transaction rejected by user on Trezor device',
-              HardwareWalletErrorCode.UserRejected,
-              WalletType.Trezor,
-            );
-          }
+        const { signature } = result.payload as TrezorSignedTransactionResult;
+        const sigBytes = new Uint8Array(
+          Buffer.from(signature, 'hex'),
+        ) as SignatureBytes;
 
+        if (sigBytes.length !== 64) {
           throw new HardwareWalletError(
-            `Trezor signing failed: ${errorPayload.error}`,
+            `Expected 64-byte signature from Trezor, got ${sigBytes.length} bytes`,
             HardwareWalletErrorCode.SigningFailed,
             WalletType.Trezor,
           );
         }
-
-        const { signature } = result.payload as { signature: string };
-        const sigBytes = new Uint8Array(
-          Buffer.from(signature, 'hex'),
-        ) as SignatureBytes;
 
         const sigDict: SignatureDictionary = {
           [this.address]: sigBytes,
