@@ -7,18 +7,20 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import {KeystoneAdapter} from '@heymike/hw-keystone';
 import {useHardwareWallet} from '@heymike/hw-react-native-ui';
 import {useQrInteractionHandler, SigningModal} from '@heymike/hw-react-native-ui/dist/components';
 import type {HardwareAccount} from '@heymike/hw-core';
 import type {SigningState} from '@heymike/hw-react-native-ui/dist/components';
+import {KeystoneCameraScanner} from '../components/KeystoneCameraScanner';
 
 export function KeystoneScreen() {
-  // The QR handler provides both the handler interface and a modal component
   const {handler: qrHandler, QrModal} = useQrInteractionHandler({
-    // In a real app, you'd provide custom renderers:
-    // renderQr: (value, size) => <QRCode value={value} size={size} />,
-    // renderScanner: (onScan) => <CameraScanner onScan={onScan} />,
+    renderQr: (value, size) => (
+      <QRCode value={value} size={size} backgroundColor="#fff" color="#000" />
+    ),
+    renderScanner: (onScan) => <KeystoneCameraScanner onScan={onScan} />,
   });
 
   const adapter = useMemo(
