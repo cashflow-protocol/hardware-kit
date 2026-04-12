@@ -30,10 +30,13 @@ export class TrezorConnectedWallet implements ConnectedWallet {
     this.trezorConnect = trezorConnect;
   }
 
-  async getAccounts(limit: number = 5): Promise<HardwareAccount[]> {
+  async getAccounts(
+    limit: number = 5,
+    startIndex: number = 0,
+  ): Promise<HardwareAccount[]> {
     const accounts: HardwareAccount[] = [];
 
-    for (let i = 0; i < limit; i++) {
+    for (let i = startIndex; i < startIndex + limit; i++) {
       const derivationPath = solanaBip44Path(i, 0);
       try {
         const result = await this.trezorConnect.solanaGetAddress({

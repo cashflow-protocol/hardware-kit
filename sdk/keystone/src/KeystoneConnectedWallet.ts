@@ -34,10 +34,15 @@ export class KeystoneConnectedWallet implements ConnectedWallet {
     this.qrHandler = qrHandler;
   }
 
-  async getAccounts(limit: number = 5): Promise<HardwareAccount[]> {
-    const keys = this.multiAccounts.keys.slice(0, limit);
+  async getAccounts(
+    limit: number = 5,
+    startIndex: number = 0,
+  ): Promise<HardwareAccount[]> {
+    // Keystone exposes a fixed set of pre-exported accounts via the initial
+    // QR scan. We can only return what the user exported from their device.
+    const keys = this.multiAccounts.keys.slice(startIndex, startIndex + limit);
 
-    return keys.map((key, index) => {
+    return keys.map((key, offset) => {
       // Keystone provides hex-encoded public keys.
       // Convert 32-byte Ed25519 public key to base58 for Solana address.
       const pubKeyBytes = Buffer.from(key.publicKey, 'hex');
@@ -46,7 +51,7 @@ export class KeystoneConnectedWallet implements ConnectedWallet {
       return {
         address: bs58Address,
         derivationPath: key.path,
-        index,
+        index: startIndex + offset,
       };
     });
   }

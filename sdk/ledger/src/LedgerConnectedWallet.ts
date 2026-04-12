@@ -36,18 +36,23 @@ export class LedgerConnectedWallet implements ConnectedWallet {
     this.solanaApp = new Solana(transport);
   }
 
-  async getAccounts(limit: number = 5): Promise<HardwareAccount[]> {
+  async getAccounts(
+    limit: number = 5,
+    startIndex: number = 0,
+  ): Promise<HardwareAccount[]> {
     const accounts: HardwareAccount[] = [];
 
-    // Check if blind signing is enabled
-    try {
-      const config = await this.solanaApp.getAppConfiguration();
-      (this.capabilities as any).blindSigning = config.blindSigningEnabled;
-    } catch {
-      // Ignore - app config may fail on older firmware
+    // Check if blind signing is enabled (only on first page)
+    if (startIndex === 0) {
+      try {
+        const config = await this.solanaApp.getAppConfiguration();
+        (this.capabilities as any).blindSigning = config.blindSigningEnabled;
+      } catch {
+        // Ignore - app config may fail on older firmware
+      }
     }
 
-    for (let i = 0; i < limit; i++) {
+    for (let i = startIndex; i < startIndex + limit; i++) {
       const derivationPath = solanaBip44Path(i, 0);
       try {
         // Ledger SDK expects path without "m/" prefix

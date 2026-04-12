@@ -80,8 +80,14 @@ export interface ConnectedWallet {
   readonly transportType: TransportType;
   readonly capabilities: WalletCapabilities;
 
-  /** Enumerate accounts at derivation indices 0..limit-1 (default limit: 5) */
-  getAccounts(limit?: number): Promise<HardwareAccount[]>;
+  /**
+   * Enumerate accounts at derivation indices startIndex..startIndex+limit-1.
+   * Default: startIndex=0, limit=5.
+   *
+   * Hardware wallets can derive infinite accounts from their seed;
+   * consumers paginate by calling this repeatedly with increasing startIndex.
+   */
+  getAccounts(limit?: number, startIndex?: number): Promise<HardwareAccount[]>;
 
   /**
    * Return a @solana/signers-compatible signer for the given account.

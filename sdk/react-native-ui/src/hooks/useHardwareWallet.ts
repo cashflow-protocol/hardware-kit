@@ -26,6 +26,8 @@ export interface UseHardwareWalletReturn {
   accounts: HardwareAccount[];
   isLoadingAccounts: boolean;
   loadAccounts: (limit?: number) => Promise<void>;
+  /** Append the next page of accounts to the current list */
+  loadMoreAccounts: (limit?: number) => Promise<void>;
 
   // Signer
   getSigner: (account: HardwareAccount) => HardwareWalletSigner | null;
@@ -127,8 +129,8 @@ export function useHardwareWallet(
     }
   }, [connectedWallet]);
 
-  const loadAccounts = useCallback(
-    async (limit?: number) => {
+  const fetchAccounts = useCallback(
+    async (limit: number | undefined, startIndex: number, append: boolean) => {
       if (!connectedWallet) {
         setError(
           new HardwareWalletError(
@@ -141,8 +143,8 @@ export function useHardwareWallet(
       setIsLoadingAccounts(true);
       setError(null);
       try {
-        const accts = await connectedWallet.getAccounts(limit);
-        setAccounts(accts);
+        const accts = await connectedWallet.getAccounts(limit, startIndex);
+        setAccounts(prev => (append ? [...prev, ...accts] : accts));
       } catch (err) {
         const hwError =
           err instanceof HardwareWalletError
@@ -157,6 +159,16 @@ export function useHardwareWallet(
       }
     },
     [connectedWallet],
+  );
+
+  const loadAccounts = useCallback(
+    (limit?: number) => fetchAccounts(limit, 0, false),
+    [fetchAccounts],
+  );
+
+  const loadMoreAccounts = useCallback(
+    (limit?: number) => fetchAccounts(limit, accounts.length, true),
+    [fetchAccounts, accounts.length],
   );
 
   const getSigner = useCallback(
@@ -179,6 +191,7 @@ export function useHardwareWallet(
     accounts,
     isLoadingAccounts,
     loadAccounts,
+    loadMoreAccounts,
     getSigner,
     error,
     clearError,
